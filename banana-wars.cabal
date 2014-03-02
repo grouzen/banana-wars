@@ -17,6 +17,10 @@ cabal-version:       >=1.10
 
 executable banana-wars
   main-is:             Game.hs             
+  other-modules:       Game.Ship
+                       Game.Walls
+                       Game.GameState
+                       
   default-extensions:  NamedFieldPuns
   build-depends:       base >=4.6 && <4.7,
                        reactive-banana >= 0.8,
