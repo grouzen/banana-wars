@@ -8,7 +8,7 @@ import qualified Graphics.UI.SDL as SDL
 import Data.Word (Word32)
 import Control.Monad
 
-import Game.Types
+import Game.Basics
 import Game.Ship
 import Game.Walls
 import Game.GameState
@@ -24,13 +24,17 @@ main = do
   sources <- (,) <$> newAddHandler <*> newAddHandler
   network <- compile $ setupNetwork conf sources
 
-  SDL.enableKeyRepeat 60 60
+  SDL.setCaption "Banana Wars" ""
+  SDL.enableKeyRepeat 50 50
 
   actuate network
-  eventLoop 60 sources
+  eventLoop 50 sources
 
 
-eventLoop :: Int -> ((AddHandler SDL.Event, Handler SDL.Event), (AddHandler Word32, Handler Word32)) -> IO ()
+eventLoop ::
+  Int ->
+  ((AddHandler SDL.Event, Handler SDL.Event),
+   (AddHandler Word32, Handler Word32)) -> IO ()
 eventLoop rate (esdlkey, esdltick) = do
   events <- collectEvents
   startTick <- SDL.getTicks
@@ -70,12 +74,23 @@ setupNetwork conf (esdlkey, esdltick) = do
 
   let
 
-    igame = mkGameState
+    igame = mkGameState conf
 
     bship = accumB (gShip igame) (flip move <$> emoveship)
+
+    bwalls = accumB (gWalls igame) (flip move <$> emovewalls)
     
-    bgame = GameState <$> bship
-    
+    bgame = GameState <$> bship <*> bwalls
+
+    emovewalls = (\_ -> ToDown) <$> eperiod 1000
+
+    eperiod n = filterE (\t -> (rem t n) > 0) $ accumE 0 (f n <$> etick)
+      where
+        f :: Word32 -> Word32 -> Word32 -> Word32
+        f n c p = let dt = c - p
+                  in
+                   if dt > n then c else (p `div` n) * n
+                                           
     emoveship = withDirection <$> filterE isMove ekey
       where
         isMove :: SDL.Event -> Bool

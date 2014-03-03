@@ -5,7 +5,7 @@ module Game.Ship
          mkShip
        ) where
 
-import Game.Types
+import Game.Basics
 import qualified Graphics.UI.SDL as SDL
 
 data Ship = Ship {
@@ -13,9 +13,9 @@ data Ship = Ship {
   , sSpeed    :: Int  
   } deriving (Show)
 
-mkShip :: Ship
-mkShip = Ship {
-    sPosition = (15, 15)
+mkShip :: Config -> Ship
+mkShip Config{cWorldSize} = Ship {
+    sPosition = ((fst cWorldSize) `div` 2, (snd cWorldSize) `div` 2)
   , sSpeed    = 1
   }
 

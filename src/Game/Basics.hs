@@ -1,7 +1,7 @@
 
-module Game.Types
+module Game.Basics
        (
-       , Movable    (..)
+         Movable    (..)
        , Renderable (..)
        , Direction  (..)
        , Config     (..)

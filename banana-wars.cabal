@@ -20,10 +20,13 @@ executable banana-wars
   other-modules:       Game.Ship
                        Game.Walls
                        Game.GameState
+                       Game.Basics
                        
   default-extensions:  NamedFieldPuns
   build-depends:       base >=4.6 && <4.7,
                        reactive-banana >= 0.8,
-                       SDL >= 0.6.5
+                       SDL >= 0.6.5,
+                       combobuffer >= 0.1,
+                       vector >= 0.10.9.1
   hs-source-dirs:      src
   default-language:    Haskell2010
