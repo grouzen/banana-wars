@@ -82,14 +82,13 @@ setupNetwork conf (esdlkey, esdltick) = do
     
     bgame = GameState <$> bship <*> bwalls
 
-    emovewalls = (\_ -> ToDown) <$> eperiod 1000
+    emovewalls = ToDown <$ eperiod 1000
 
-    eperiod n = filterE (\t -> (rem t n) > 0) $ accumE 0 (f n <$> etick)
+    eperiod n = filterE (\t -> rem t n > 0) $ accumE 0 (f n <$> etick)
       where
         f :: Word32 -> Word32 -> Word32 -> Word32
-        f n c p = let dt = c - p
-                  in
-                   if dt > n then c else (p `div` n) * n
+        f n c p | c - p > n = if rem c n == 0 then c + 1 else c
+                | otherwise = (p `div` n) * n
                                            
     emoveship = withDirection <$> filterE isMove ekey
       where
