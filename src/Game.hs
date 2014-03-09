@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
 
 module Main where
 
@@ -74,22 +74,29 @@ setupNetwork conf (esdlkey, esdltick) = do
 
   let
 
+    igame :: GameState
     igame = mkGameState conf
 
+    bship :: Behavior t Ship
     bship = accumB (gShip igame) (flip move <$> emoveship)
 
+    bwalls :: Behavior t Walls
     bwalls = accumB (gWalls igame) (flip move <$> emovewalls)
-    
+
+    bgame :: Behavior t GameState
     bgame = GameState <$> bship <*> bwalls
 
-    emovewalls = ToDown <$ eperiod 1000
+    emovewalls :: Event t Direction
+    emovewalls = ToDown <$ eperiod (wSpeed <$> bwalls)
 
-    eperiod n = filterE (\t -> rem t n > 0) $ accumE 0 (f n <$> etick)
+    eperiod :: Behavior t Word32 -> Event t (Word32, Word32)
+    eperiod b = filterE (\(t, n) -> rem t n > 0) $ accumE (0, 0) (f <$> b <@> etick)
       where
-        f :: Word32 -> Word32 -> Word32 -> Word32
-        f n c p | c - p > n = if rem c n == 0 then c + 1 else c
-                | otherwise = (p `div` n) * n
-                                           
+        f :: Word32 -> Word32 -> (Word32, Word32) -> (Word32, Word32)
+        f n c (p,_) | c - p > n = if rem c n == 0 then (c + 1, n) else (c, n)
+                    | otherwise = ((p `div` n) * n, n)
+
+    emoveship :: Event t Direction
     emoveship = withDirection <$> filterE isMove ekey
       where
         isMove :: SDL.Event -> Bool
@@ -103,7 +110,13 @@ setupNetwork conf (esdlkey, esdltick) = do
           SDL.SDLK_UP    -> ToUp
           SDL.SDLK_DOWN  -> ToDown
 
+    eframe :: Event t GameState
     eframe = bgame <@ etick
   
   reactimate $
     fmap (\g -> render g conf) eframe
+
+  -- Debug
+  reactimate $
+    flip fmap (eperiod (wSpeed <$> bwalls)) $ \w -> do
+      putStrLn $ show (fst w) ++ " @ " ++ show (snd w)
