@@ -19,15 +19,17 @@ data Config = Config {
     cResolution :: (Int, Int)
   , cWorldSize  :: (Int, Int)
   , cCellSize   :: Int
+  , cFrameRate  :: Int
   }
 
-mkConfig :: (Int, Int) -> (Int, Int) -> Config
-mkConfig s w = let c = (fst s) `div` (fst w)
+mkConfig :: (Int, Int) -> (Int, Int) -> Int -> Config
+mkConfig s w f = let c = (fst s) `div` (fst w)
                in
                 Config {
                     cResolution = s
                   , cWorldSize  = w
                   , cCellSize   = c
+                  , cFrameRate  = f
                   }
 
 data Direction = ToLeft

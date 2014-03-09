@@ -18,17 +18,18 @@ main = do
   -- game config
   let s@(sw, sh) = (640, 480)
       w@(ww, wh) = (32, 24)
-      conf       = mkConfig s w
+      framerate  = 50
+      conf       = mkConfig s w framerate
   
   screen  <- SDL.setVideoMode sw sh 32 [SDL.SWSurface]
   sources <- (,) <$> newAddHandler <*> newAddHandler
   network <- compile $ setupNetwork conf sources
 
   SDL.setCaption "Banana Wars" ""
-  SDL.enableKeyRepeat 50 50
+  SDL.enableKeyRepeat framerate framerate
 
   actuate network
-  eventLoop 50 sources
+  eventLoop framerate sources
 
 
 eventLoop ::
@@ -76,6 +77,9 @@ setupNetwork conf (esdlkey, esdltick) = do
 
     igame :: GameState
     igame = mkGameState conf
+      
+    bgame :: Behavior t GameState
+    bgame = GameState <$> bship <*> bwalls
 
     bship :: Behavior t Ship
     bship = accumB (gShip igame) (flip move <$> emoveship)
@@ -83,18 +87,22 @@ setupNetwork conf (esdlkey, esdltick) = do
     bwalls :: Behavior t Walls
     bwalls = accumB (gWalls igame) (flip move <$> emovewalls)
 
-    bgame :: Behavior t GameState
-    bgame = GameState <$> bship <*> bwalls
+    -- in game ticks, e.g 10 = 50ms * 10 = 500ms, if game tick = 50ms
+    -- TODO: make common interface for such needs
+    bwallsfreq :: Behavior t Int
+    bwallsfreq = freq <$> (wSpeed <$> bwalls)
+      where
+        freq :: Word32 -> Int
+        freq s = fromIntegral s `div` (1000 `div` (cFrameRate conf))
 
     emovewalls :: Event t Direction
-    emovewalls = ToDown <$ eperiod (wSpeed <$> bwalls)
-
-    eperiod :: Behavior t Word32 -> Event t (Word32, Word32)
-    eperiod b = filterE (\(t, n) -> rem t n > 0) $ accumE (0, 0) (f <$> b <@> etick)
+    emovewalls = ToDown <$ filterE (== 0) (accumE 0 $ update <$> (bwallsfreq <@ etick))
       where
-        f :: Word32 -> Word32 -> (Word32, Word32) -> (Word32, Word32)
-        f n c (p,_) | c - p > n = if rem c n == 0 then (c + 1, n) else (c, n)
-                    | otherwise = ((p `div` n) * n, n)
+        update :: Int -> Int -> Int
+        update freq c = let c' = c + 1
+                        in if c' `mod` freq == 0
+                           then 0
+                           else c'
 
     emoveship :: Event t Direction
     emoveship = withDirection <$> filterE isMove ekey
@@ -116,7 +124,3 @@ setupNetwork conf (esdlkey, esdltick) = do
   reactimate $
     fmap (\g -> render g conf) eframe
 
-  -- Debug
-  reactimate $
-    flip fmap (eperiod (wSpeed <$> bwalls)) $ \w -> do
-      putStrLn $ show (fst w) ++ " @ " ++ show (snd w)

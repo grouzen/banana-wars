@@ -38,7 +38,6 @@ mkWalls Config{cWorldSize} = Walls {
 instance Movable Walls where
   move w d = w {
       wWalls = R.push (wWalls w) (1, 1)
-      , wSpeed = (wSpeed w) + 500
     }
 
 instance Renderable Walls where
