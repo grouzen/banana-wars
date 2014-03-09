@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
 
 module Main where
 
@@ -18,17 +18,18 @@ main = do
   -- game config
   let s@(sw, sh) = (640, 480)
       w@(ww, wh) = (32, 24)
-      conf       = mkConfig s w
+      framerate  = 50
+      conf       = mkConfig s w framerate
   
   screen  <- SDL.setVideoMode sw sh 32 [SDL.SWSurface]
   sources <- (,) <$> newAddHandler <*> newAddHandler
   network <- compile $ setupNetwork conf sources
 
   SDL.setCaption "Banana Wars" ""
-  SDL.enableKeyRepeat 50 50
+  SDL.enableKeyRepeat framerate framerate
 
   actuate network
-  eventLoop 50 sources
+  eventLoop framerate sources
 
 
 eventLoop ::
@@ -74,22 +75,36 @@ setupNetwork conf (esdlkey, esdltick) = do
 
   let
 
+    igame :: GameState
     igame = mkGameState conf
-
-    bship = accumB (gShip igame) (flip move <$> emoveship)
-
-    bwalls = accumB (gWalls igame) (flip move <$> emovewalls)
-    
+      
+    bgame :: Behavior t GameState
     bgame = GameState <$> bship <*> bwalls
 
-    emovewalls = ToDown <$ eperiod 1000
+    bship :: Behavior t Ship
+    bship = accumB (gShip igame) (flip move <$> emoveship)
 
-    eperiod n = filterE (\t -> rem t n > 0) $ accumE 0 (f n <$> etick)
+    bwalls :: Behavior t Walls
+    bwalls = accumB (gWalls igame) (flip move <$> emovewalls)
+
+    -- in game ticks, e.g 10 = 50ms * 10 = 500ms, if game tick = 50ms
+    -- TODO: make common interface for such needs
+    bwallsfreq :: Behavior t Int
+    bwallsfreq = freq <$> (wSpeed <$> bwalls)
       where
-        f :: Word32 -> Word32 -> Word32 -> Word32
-        f n c p | c - p > n = if rem c n == 0 then c + 1 else c
-                | otherwise = (p `div` n) * n
-                                           
+        freq :: Word32 -> Int
+        freq s = fromIntegral s `div` (1000 `div` (cFrameRate conf))
+
+    emovewalls :: Event t Direction
+    emovewalls = ToDown <$ filterE (== 0) (accumE 0 $ update <$> (bwallsfreq <@ etick))
+      where
+        update :: Int -> Int -> Int
+        update freq c = let c' = c + 1
+                        in if c' `mod` freq == 0
+                           then 0
+                           else c'
+
+    emoveship :: Event t Direction
     emoveship = withDirection <$> filterE isMove ekey
       where
         isMove :: SDL.Event -> Bool
@@ -103,7 +118,9 @@ setupNetwork conf (esdlkey, esdltick) = do
           SDL.SDLK_UP    -> ToUp
           SDL.SDLK_DOWN  -> ToDown
 
+    eframe :: Event t GameState
     eframe = bgame <@ etick
   
   reactimate $
     fmap (\g -> render g conf) eframe
+
