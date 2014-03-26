@@ -27,6 +27,7 @@ executable banana-wars
                        reactive-banana >= 0.8,
                        SDL >= 0.6.5,
                        combobuffer >= 0.1,
-                       vector >= 0.10.9.1
+                       vector >= 0.10.9.1,
+                       random >= 1.0.1.1
   hs-source-dirs:      src
   default-language:    Haskell2010

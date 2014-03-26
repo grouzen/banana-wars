@@ -31,7 +31,6 @@ main = do
   actuate network
   eventLoop framerate sources
 
-
 eventLoop ::
   Int ->
   ((AddHandler SDL.Event, Handler SDL.Event),
@@ -61,9 +60,8 @@ eventLoop rate (esdlkey, esdltick) = do
     collectEvents = do
       e <- SDL.pollEvent
       case e of
-        SDL.Quit    -> return Nothing
-        otherwise   -> return $ Just e
-
+        SDL.Quit  -> return Nothing
+        otherwise -> return $ Just e
 
 setupNetwork :: forall t. Frameworks t =>
                 Config ->
