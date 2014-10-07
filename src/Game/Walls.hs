@@ -34,15 +34,19 @@ data Walls = Walls {
   } deriving (Show)
 
 mkWalls :: Config -> Walls
-mkWalls Config{cWorldSize} = Walls {
-    wSpeed = 1000
-  , wWalls = R.newInit (4, 4) (snd cWorldSize)
-  , wWidth = fst cWorldSize
-  } 
+mkWalls Config{cWorldSize} =
+  let walls = Walls {
+        wSpeed = 1000
+        , wWalls = R.newInit (0, 0) (snd cWorldSize)
+        , wWidth = fst cWorldSize
+        }
+  in
+   walls { wWalls = R.push (wWalls walls) (5, 5) }
 
 instance Movable Walls where
   move w d = let p = (wWalls w) R.! 0
                  range' = range $ ((wWidth w) `div` 2) - 4
+                 -- TODO: maybe I should substitute unsafePerformIO with dzeta function
                  l = unsafePerformIO (randomRIO $ range' (fst p))
                  r = unsafePerformIO (randomRIO $ range' (snd p))
              in
